@@ -1,0 +1,166 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  STUDENT
+  TEACHER
+  STAFF
+}
+
+enum Status {
+  ACTIVE
+  BLOCKED
+  REMOVED
+}
+
+model User {
+  id              String            @id @db.Uuid
+  ssoid           String            @db.Uuid
+  name            String            @db.VarChar
+  email           String            @unique @db.VarChar
+  type            UserType          @default(STUDENT)
+  isActive        Boolean           @default(true) @db.Boolean
+  status          Status            @default(ACTIVE)
+  StudentCourse   StudentCourse[]
+  StudentCohort   StudentCohort[]
+  TeacherCourse   TeacherCourse[]
+  StuentExamGrade StuentExamGrade[]
+}
+
+model Course {
+  id            String          @id @db.Uuid
+  displayName   String          @db.VarChar
+  credits       Int             @db.Integer
+  graded        Float           @db.DoublePrecision
+  passingGrade  Float           @db.DoublePrecision
+  maxGrade      Float           @db.DoublePrecision
+  startDate     DateTime        @db.Timestamp
+  endDate       DateTime        @db.Timestamp
+  period        Period          @relation(fields: [periodId], references: [id])
+  periodId      String          @db.Uuid
+  Exam          Exam[]
+  StudentCourse StudentCourse[]
+  TeacherCourse TeacherCourse[]
+  CourseCohort  CourseCohort[]
+}
+
+enum PeriodStatus {
+  IN_CREATION
+  IN_PROGRESS
+  CLOSED
+}
+
+model Period {
+  id          String       @id @db.Uuid
+  displayName String       @db.VarChar
+  status      PeriodStatus @default(IN_CREATION)
+  startDate   DateTime     @db.Timestamp
+  endDate     DateTime     @db.Timestamp
+  course      Course[]
+  programme   Programme    @relation(fields: [programmeId], references: [id])
+  programmeId String       @db.Uuid
+}
+
+model Programme {
+  id          String   @id @db.Uuid
+  displayName String   @db.VarChar
+  language    String   @db.VarChar
+  startDate   DateTime @db.Timestamp
+  endDate     DateTime @db.Timestamp
+  cohort      Cohort[]
+  period      Period[]
+}
+
+model Cohort {
+  id            String          @id @db.Uuid
+  displayName   String          @db.VarChar
+  startDate     DateTime        @db.Timestamp
+  endDate       DateTime        @db.Timestamp
+  identifier    String          @unique @db.VarChar
+  isActive      Boolean         @default(true) @db.Boolean
+  programme     Programme       @relation(fields: [programmeId], references: [id])
+  programmeId   String          @db.Uuid
+  StudentCohort StudentCohort[]
+  CourseCohort  CourseCohort[]
+}
+
+enum ExamType {
+  EXAM
+  CONTINUOUS
+}
+
+model Exam {
+  id              String            @id @db.Uuid
+  displayName     String            @db.VarChar
+  type            ExamType          @default(EXAM)
+  weight          Int               @db.Integer
+  course          Course            @relation(fields: [courseId], references: [id])
+  courseId        String            @db.Uuid
+  StuentExamGrade StuentExamGrade[]
+}
+
+model Grade {
+  id              String            @id @db.Uuid
+  currentValue    Float             @db.DoublePrecision
+  previousValue   Float             @db.DoublePrecision
+  previousDate    DateTime          @db.Timestamp
+  StuentExamGrade StuentExamGrade[]
+}
+
+model StudentCourse {
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String @db.Uuid
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String @db.Uuid
+
+  @@id([userId, courseId])
+}
+
+model TeacherCourse {
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String @db.Uuid
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String @db.Uuid
+
+  @@id([userId, courseId])
+}
+
+model StudentCohort {
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String @db.Uuid
+  cohort   Cohort @relation(fields: [cohortId], references: [id])
+  cohortId String @db.Uuid
+
+  @@id([userId, cohortId])
+}
+
+model CourseCohort {
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String @db.Uuid
+  cohort   Cohort @relation(fields: [cohortId], references: [id])
+  cohortId String @db.Uuid
+
+  @@id([courseId, cohortId])
+}
+
+model StuentExamGrade {
+  user    User   @relation(fields: [userId], references: [id])
+  userId  String @db.Uuid
+  exam    Exam   @relation(fields: [examId], references: [id])
+  examId  String @db.Uuid
+  grade   Grade  @relation(fields: [gradeId], references: [id])
+  gradeId String @db.Uuid
+
+
+  @@id([userId, examId])
+  @@unique([userId, examId, gradeId])
+}
